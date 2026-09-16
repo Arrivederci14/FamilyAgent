@@ -20,6 +20,9 @@ dependencies = [
     "langgraph==1.0.7",
     "langgraph-prebuilt==1.0.7",
     "openai==2.16.0",
+    # config.py 直接 import pydantic_settings 读 .env；它本来会随 langchain-community
+    # 一起被装进来，但直接依赖不该依赖传递依赖，这里显式声明
+    "pydantic-settings>=2.0",
     "pypdf==6.6.2",
     "python-multipart>=0.0.32",
     "sse-starlette==3.2.0",

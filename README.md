@@ -22,6 +22,14 @@
 
 ---
 
+## 界面预览
+
+![前端页面](docs/screenshots/chat.png)
+
+左侧是历史会话（标题取首条提问，可删除）；顶部「家庭档案（2）」打开档案管理弹窗；回答上方依次是**分发结果标签**（本次命中的分支）、**档案说明条**（这次参考了哪几位家人）与「返回首页」入口；正文是流式渲染的 Markdown。
+
+---
+
 ## 快速开始
 
 ### 1. 环境要求
@@ -38,6 +46,7 @@ git clone <你的仓库地址>
 cd FamilyAgent
 uv sync            # 按 uv.lock 创建 .venv 并装好全部依赖
 python test.py     # 环境自检：确认依赖都装齐了（应打印「所有库都安装成功并可正常导入！」）
+python -m tests.test_routes   # 可选：跑一遍离线自测，不需要任何 API Key
 ```
 
 ### 3. 配置环境变量
@@ -155,10 +164,12 @@ FamilyAgent/
 │   ├── test/                  # 本地自测脚本（见「测试」，未纳入版本库）
 │   ├── history/               # 运行时生成：对话历史（未纳入版本库）
 │   └── familydata/            # 运行时生成：家庭档案（未纳入版本库）
+├── tests/                     # 功能自测（离线，随仓库发布，见「测试」）
 ├── test.py                    # 依赖自检：确认三方包都装齐（见「测试」）
 ├── data/health_knowledge.csv  # 健康知识库源文件（title,category,content）
-├── docs/screenshots/          # 文档配图
+├── docs/screenshots/chat.png  # README 配图
 ├── .env.example               # 环境变量模板
+├── LICENSE                    # MIT
 └── pyproject.toml / uv.lock   # 依赖与锁定版本
 ```
 
@@ -192,7 +203,27 @@ FamilyAgent/
 
 ## 测试
 
-项目里有**两类**「测试」，作用不同，别混淆：
+项目里有**三类**「测试」，作用不同，别混淆。
+
+### 功能自测：`tests/`（随仓库发布，**不需要任何 API Key**）
+
+```bash
+python -m tests.test_history_store
+python -m tests.test_family_profile
+python -m tests.test_intent_recognition
+python -m tests.test_routes
+```
+
+| 脚本 | 覆盖内容 |
+|---|---|
+| `tests/test_history_store` | 会话增删改查、上下文拼装、**非法会话 id 拒绝**、坏文件容错、原子写 |
+| `tests/test_family_profile` | 档案增删改查、字段校验与边界值、称呼直连与模型判断两条选择链路、提示词注入格式 |
+| `tests/test_intent_recognition` | 三类标签的解析容错、追问上下文注入、异常/空回复/空输入兜底 |
+| `tests/test_routes` | 页面渲染、接口路径全集、档案与会话接口、三个分支分发正确、空问题短路、档案注入与多轮沿用 |
+
+设计取向是**离线可复现**：需要模型的地方一律换成假 LLM，数据写到临时目录，所以跑起来**不联网、不产生 API 费用、不碰** `familyagent/history/` 与 `familyagent/familydata/` 里的真实数据。
+
+> 没配 `.env` 也能直接跑：`tests/__init__.py` 会在导入 `familyagent` 之前给三个必填项补上占位值；一旦检测到 `.env` 存在就什么都不做，绝不覆盖真实配置。
 
 ### 环境自检：`test.py`
 
@@ -209,13 +240,15 @@ python test.py
 
 > 它校验的 `python-dotenv` 不是本项目直接声明的依赖，而是随 `pydantic-settings` 一起装进来的（`config.py` 用它读 `.env`）。放在自检里是为了确认这条间接依赖链完整。
 
-### 功能自测：`familyagent/test/`
+### 本地联调脚本：`familyagent/test/`
 
-**该目录已加入 `.gitignore`，不随仓库发布**（脚本里含真实提问与个人化用例），克隆仓库后需要按需自行补建。运行方式：
+**该目录已加入 `.gitignore`，不随仓库发布**（脚本里含真实提问与个人化用例），克隆仓库后需按需自行补建。运行方式：
 
 ```bash
 python -m familyagent.test.test_xxx
 ```
+
+与上面的区别是它**会真的调用大模型、向量库与天气接口**，用来验证「钥匙配得对不对、链路通不通」：
 
 | 脚本 | 覆盖内容 | 依赖 |
 |---|---|---|
@@ -227,11 +260,11 @@ python -m familyagent.test.test_xxx
 | `test_tool` | 健康知识检索 Tool | 真实 API |
 | `test_agent_health` | 健康问答智能体（含知识库命中与兜底） | 真实 API |
 | `test_agent_travel` | 旅游智能体 + 天气工具直调 | 真实 API |
-| `test_intent_recognition` | 三分类识别 + 解析容错 + 异常兜底 | 真实 API + 假 LLM |
-| `test_history_store` | 会话 CRUD、上下文拼装、**非法 id 拒绝**、坏文件容错 | 离线 |
+| `test_intent_recognition` | 三分类识别（含真实模型）+ 解析容错 + 异常兜底 | 真实 API + 假 LLM |
+| `test_history_store` | 会话 CRUD、上下文拼装、非法 id 拒绝、坏文件容错 | 离线 |
 | `test_family_profile` | 档案 CRUD、字段校验、匹配与选择链路、格式化 | 离线（假 LLM） |
 
-两个离线脚本用临时目录和假 LLM，不碰真实数据、不产生费用，适合改完代码先跑一遍。
+改完代码先跑 `tests/`（快、免费、可复现），需要确认外部服务真的通时再跑 `familyagent/test/`。
 
 ---
 
@@ -276,4 +309,4 @@ python -m familyagent.test.test_xxx
 
 ## License
 
-暂未指定。若希望他人可自由使用/修改，请补充 `LICENSE` 文件（如 MIT）。
+[MIT](LICENSE) © 2026 Arrivederci14
