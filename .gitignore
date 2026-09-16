@@ -1,0 +1,26 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# 本地环境变量（含真实 API Key，禁止提交）
+.env
+
+# 测试代码：全部放在 familyagent/test/ 下，仅本地自测用，不进版本库
+# 运行方式：python -m familyagent.test.test_xxx
+familyagent/test/
+
+# 对话历史与家庭档案：本地运行时产生，含家庭成员隐私信息，禁止提交
+familyagent/history/
+familyagent/familydata/
+
+# 测试产物：测试截图统一放 docs/screenshots/，防止误留在包目录内被提交或打包
+familyagent/test/*.png
+familyagent/test/*.jpg
+familyagent/test/*.jpeg
